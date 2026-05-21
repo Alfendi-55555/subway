@@ -1,5 +1,5 @@
 class RushHourEvent:
-    """Morning commute event that pushes passengers toward business stations."""
+    """일반 상황에 비해 승객량이 증가하고, 특정 역으로의 수요가 몰립니다."""
 
     NAME = "출근 러시아워"
     START_MINUTE = 7 * 60 + 30

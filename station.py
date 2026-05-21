@@ -5,7 +5,7 @@ from .passenger import Passenger
 
 
 class Station:
-    # 역 상태를 담당하는 클래스. 대기 승객/ 승하차 통계/ 무정차 상태 관리 등
+    """역 상태를 담당하는 클래스. 대기 승객/ 승하차 통계/ 무정차 상태 관리 등"""
 
     OVERLOAD_THRESHOLD = 65
 

@@ -4,9 +4,10 @@ from .analyzer import BottleneckAnalyzer
 
 
 class SubwayRenderer:
-    """Draws the subway simulation without owning simulation rules."""
+    """실시간 시뮬레이션과 알림창을 비롯한 화면 그리기를 담당하는 클래스"""
 
     def draw(self, system) -> None:
+        system.apply_buttons = []
         self._draw_map(system)
         self._draw_trains(system)
         self._draw_ui(system)
@@ -60,7 +61,7 @@ class SubwayRenderer:
         self._draw_stats(system)
         self._draw_panel(system, (system.PANEL_X, 185, 420, 165), "Alerts")
         self._draw_alerts(system)
-        self._draw_panel(system, (system.PANEL_X, 360, 420, 275), "Scenario")
+        self._draw_panel(system, (system.PANEL_X, 360, 420, 275), "Scenario(1h)")
         self._draw_scenario_result(system)
         self._draw_panel(system, (system.PANEL_X, 645, 420, 80), "Controls")
         self._draw_controls(system)
@@ -98,7 +99,7 @@ class SubwayRenderer:
     def _draw_scenario_result(self, system) -> None:
         if not system.scenario_result:
             rows = [
-                "역을 우클릭하면 30초 고속 시뮬레이션으로",
+                "역을 우클릭하면 1시간 고속 시뮬레이션으로",
                 "현상유지 / 무정차 / 열차 추가 시나리오를 비교합니다.",
             ]
             for index, row in enumerate(rows):
@@ -111,6 +112,7 @@ class SubwayRenderer:
             (system.PANEL_X + 14, y),
         )
         y += 30
+        best = system.scenario_result["best"]
         for label, values in system.scenario_result["results"].items():
             score = system.scenario_result["scores"][label]
             boarded = values["total_boarded"]
@@ -118,9 +120,18 @@ class SubwayRenderer:
             progress = values["train_progress"]
             row = f"{label[:4]} 처리 {boarded}명 / 과부하 {overloaded}역 / 흐름 {progress:.1f} / 점수 {score:.2f}"
             system.screen.blit(system.font.render(row, True, (40, 40, 40)), (system.PANEL_X + 14, y))
+
+            if "현상유지" not in label:
+                is_best = (label == best)
+                btn_color = (0, 140, 70) if is_best else (130, 130, 130)
+                btn_rect = pygame.Rect(system.PANEL_X + 370, y, 44, 22)
+                pygame.draw.rect(system.screen, btn_color, btn_rect, border_radius=4)
+                btn_text = system.font.render("적용", True, (255, 255, 255))
+                system.screen.blit(btn_text, (btn_rect.x + 10, btn_rect.y + 3))
+                system.apply_buttons.append((btn_rect, label, system.scenario_station_id))
+
             y += 28
 
-        best = system.scenario_result["best"]
         system.screen.blit(
             system.bold_font.render(f"추천: {best}", True, (0, 110, 60)),
             (system.PANEL_X + 14, y + 10),
@@ -128,7 +139,7 @@ class SubwayRenderer:
 
     def _draw_controls(self, system) -> None:
         rows = [
-            "좌클릭: 무정차 토글",
+            "좌클릭: 무정차 처리",
             "우클릭: 병목 처방 시나리오 분석",
         ]
         for index, row in enumerate(rows):

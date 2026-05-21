@@ -2,7 +2,7 @@ import random
 
 from .clock import SimulationClock
 from .data import LINE_COLORS, LINE_NAMES, LINES, STATION_DATA
-from .destination_policy import RushHourDestinationPolicy
+from .destination_policy import DestinationPolicy, RushHourDestinationPolicy
 from .events import RushHourEvent
 from .exceptions import StationClosedError, StationOverloadError
 from .passenger import Passenger
@@ -12,7 +12,9 @@ from .train import MetroTrain
 
 
 class Simulation:
-    """Pygame-free subway simulation state and rules."""
+    """시뮬레이션 상태를 구현하는 클래스"""
+
+    MAX_EXTRA_TRAINS = 3 #최대 추가 가능 열차 수(3+3 총 6대)
 
     def __init__(
         self,
@@ -41,6 +43,7 @@ class Simulation:
         self.destination_policy = destination_policy or RushHourDestinationPolicy()
         self.reachable = reachable or self._build_reachable()
         self.transfer_ids = transfer_ids or self._build_transfer_ids()
+        self.extra_train_count = 0
 
     @classmethod
     def from_default_data(cls) -> "Simulation":
@@ -124,7 +127,7 @@ class Simulation:
             ]
             copied_trains.append(copied_train)
 
-        return Simulation(
+        cloned = Simulation(
             copied_stations,
             [route[:] for route in self.lines],
             self.line_colors[:],
@@ -139,8 +142,10 @@ class Simulation:
             PassengerSpawner(),
             self.clock.copy(),
             RushHourEvent(),
-            RushHourDestinationPolicy(),
+            self.destination_policy,
         )
+        cloned.extra_train_count = self.extra_train_count
+        return cloned
 
     def toggle_skip(self, station_id: str) -> tuple[str, str, int]:
         station = self.stations[station_id]
@@ -280,3 +285,11 @@ class Simulation:
             extra.progress = 0.5
             self.trains.append(extra)
             break
+
+    def add_user_train(self, station_id: str) -> bool:
+        """사용자 조작용 열차 추가. 제한 초과 시 False 반환."""
+        if self.extra_train_count >= self.MAX_EXTRA_TRAINS:
+            return False
+        self.apply_extra_train(station_id)
+        self.extra_train_count += 1
+        return True

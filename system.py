@@ -16,7 +16,7 @@ except ImportError:
 
 
 class SubwaySystem:
-    #전체 실행 오케스트레이션 - pygame을 통한 시각화, 이벤트, 열차/역 업데이트
+    """전체 실행 오케스트레이션 - 시뮬레이션 실행, 이벤트, 열차/역 업데이트"""
 
     W, H = 1280, 750
     PANEL_X = 820
@@ -37,6 +37,8 @@ class SubwaySystem:
         self.last_bottleneck_check = 0
         self.scenario_result = None
         self.scenario_target = None
+        self.scenario_station_id = None
+        self.apply_buttons = []
 
         self._analyzer = BottleneckAnalyzer()
         self.renderer = SubwayRenderer()
@@ -129,6 +131,7 @@ class SubwaySystem:
     def run_analysis(self, target_station_id: str) -> None:
         self.scenario_result = self._analyzer.run_scenario(self.sim, target_station_id)
         self.scenario_target = self.stations[target_station_id].name
+        self.scenario_station_id = target_station_id
         self.add_alert(f"{self.scenario_target} 시나리오 분석 완료")
 
     def add_alert(self, msg: str) -> None:
@@ -153,11 +156,15 @@ class SubwaySystem:
                     sys.exit()
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    clicked = self._get_station_at(*event.pos)
-                    if clicked and event.button == 1:
-                        self.toggle_skip(clicked)
-                    elif clicked and event.button == 3:
-                        self.run_analysis(clicked)
+                    if event.button == 1:
+                        if not self._check_apply_button(*event.pos):
+                            clicked = self._get_station_at(*event.pos)
+                            if clicked:
+                                self.toggle_skip(clicked)
+                    elif event.button == 3:
+                        clicked = self._get_station_at(*event.pos)
+                        if clicked:
+                            self.run_analysis(clicked)
 
             self._spawn_passengers(dt)
             self._check_bottleneck()
@@ -174,3 +181,28 @@ class SubwaySystem:
             if (mx - station.x) ** 2 + (my - station.y) ** 2 <= 20 ** 2:
                 return station_id
         return None
+
+    def _check_apply_button(self, mx: int, my: int) -> bool:
+        for rect, label, station_id in self.apply_buttons:
+            if rect.collidepoint(mx, my):
+                self._apply_scenario(label, station_id)
+                return True
+        return False
+
+    def _apply_scenario(self, label: str, station_id: str) -> None:
+        if "무정차" in label:
+            self.toggle_skip(station_id)
+        elif "열차" in label:
+            if self.sim.add_user_train(station_id):
+                line_name = self._get_line_name(station_id)
+                self.add_alert(
+                    f"{line_name}에 열차 추가 ({self.sim.extra_train_count}/{self.sim.MAX_EXTRA_TRAINS}대)"
+                )
+            else:
+                self.add_alert(f"열차 추가 한도 도달 ({self.sim.MAX_EXTRA_TRAINS}대)")
+
+    def _get_line_name(self, station_id: str) -> str:
+        for index, route in enumerate(self.lines):
+            if station_id in route:
+                return self.line_names[index]
+        return "알 수 없는 노선"

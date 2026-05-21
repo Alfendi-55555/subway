@@ -1,5 +1,5 @@
 class SimulationClock:
-    """Tracks in-simulation time independently from real time."""
+    """내부적으로 돌아가는 시뮬레이션 시간(시뮬레이션상 2분이 현실에서는 약 1초)"""
 
     MINUTES_PER_DAY = 24 * 60
 

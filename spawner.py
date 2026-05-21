@@ -1,12 +1,12 @@
 import random
 
-from .destination_policy import RandomDestinationPolicy
+from .destination_policy import DestinationPolicy, RandomDestinationPolicy
 from .exceptions import StationClosedError, StationOverloadError
 from .station import Station
 
 
 class PassengerSpawner:
-    """Pygame-free passenger inflow helper used by live and fast simulations."""
+    """실시간/고속 시뮬레이션에서 승객 생성을 관리하는 클래스"""
 
     EXPECTED_PER_SECOND = 3.5
 
