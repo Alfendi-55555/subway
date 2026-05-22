@@ -61,6 +61,12 @@ class Simulation:
         ]
         sim = cls(stations, lines, line_colors, line_names, trains)
         sim.seed_initial_passengers()
+        # 시작 시 각 열차가 첫 역에서 한 차례 승하차를 수행하고 즉시 출발하도록 한다.
+        # (그러지 않으면 시작 직후 약 2초간 정지 상태로 보이며, 그 동안 승객도 태우지 않는다.)
+        for train in trains:
+            start_station = stations[train.route_ids[train.current_idx]]
+            train.handle_boarding(start_station, sim.skip_station_ids)
+            train.is_stopped = False
         return sim
 
     def seed_initial_passengers(self) -> None:
@@ -220,6 +226,7 @@ class Simulation:
             self.clock,
             self.rush_hour_event,
             self.destination_policy,
+            self.skip_station_ids,
         )
         visible_events = []
         for kind, payload in events:
@@ -238,9 +245,10 @@ class Simulation:
                     self.reachable[adjacent_id],
                     self.clock,
                     self.rush_hour_event,
+                    self.skip_station_ids,
                 )
                 if not destination_id:
-                    return False
+                    continue
                 self.stations[adjacent_id].add_passenger_to(destination_id)
                 return True
             except (StationOverloadError, StationClosedError):
@@ -274,15 +282,23 @@ class Simulation:
             if station_id not in route:
                 continue
             station_index = route.index(station_id)
-            start_index = max(0, station_index - 1)
+            # 새 열차의 "다음 정차"가 항상 타겟 역이 되도록 출발 위치/방향을 잡는다.
+            # 노선 첫 역이면 그 다음 역에서 역방향으로, 그 외에는 한 칸 앞에서 정방향으로.
+            if station_index == 0:
+                start_index = 1
+                direction = -1
+            else:
+                start_index = station_index - 1
+                direction = 1
             extra = MetroTrain(
                 f"T-extra-{line_index}",
                 self.line_colors[line_index],
-                route,
+                route[:],
                 start_index,
-                1,
+                direction,
             )
             extra.progress = 0.5
+            extra.is_stopped = False
             self.trains.append(extra)
             break
 

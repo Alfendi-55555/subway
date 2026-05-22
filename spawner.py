@@ -18,6 +18,7 @@ class PassengerSpawner:
         clock=None,
         event=None,
         destination_policy=None,
+        skip_station_ids: set[str] | None = None,
     ) -> list[tuple[str, str]]:
         events: list[tuple[str, str]] = []
         event_multiplier = event.global_multiplier(clock) if event and clock else 1.0
@@ -43,6 +44,7 @@ class PassengerSpawner:
                         reachable[station_id],
                         clock,
                         event,
+                        skip_station_ids,
                     )
                     if destination_id:
                         stations[station_id].add_passenger_to(destination_id)

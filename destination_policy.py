@@ -10,6 +10,7 @@ class DestinationPolicy(ABC):
         reachable_dests: list[str],
         clock=None,
         event=None,
+        skip_station_ids: set[str] | None = None,
     ) -> str | None: ...
 
 
@@ -22,8 +23,10 @@ class RandomDestinationPolicy(DestinationPolicy):
         reachable_dests: list[str],
         clock=None,
         event=None,
+        skip_station_ids: set[str] | None = None,
     ) -> str | None:
-        candidates = [s for s in reachable_dests if s != origin_id]
+        skip = skip_station_ids or set()
+        candidates = [s for s in reachable_dests if s != origin_id and s not in skip]
         if not candidates:
             return None
         return random.choice(candidates)
@@ -38,8 +41,10 @@ class RushHourDestinationPolicy(DestinationPolicy):
         reachable_dests: list[str],
         clock=None,
         event=None,
+        skip_station_ids: set[str] | None = None,
     ) -> str | None:
-        candidates = [s for s in reachable_dests if s != origin_id]
+        skip = skip_station_ids or set()
+        candidates = [s for s in reachable_dests if s != origin_id and s not in skip]
         if not candidates:
             return None
         if clock is None or event is None or not event.is_active(clock):

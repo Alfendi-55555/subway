@@ -45,8 +45,12 @@ class Station:
         if self.is_skipped:
             raise StationClosedError(self.name)
 
+        # 출발역 자신은 목적지 후보에서 제외 (그러지 않으면 add_passenger에서 조용히 버려짐)
+        candidates = [dest for dest in reachable_dests if dest != self.id]
+        if not candidates:
+            return
         for _ in range(count):
-            destination_id = random.choice(reachable_dests)
+            destination_id = random.choice(candidates)
             self.add_passenger_to(destination_id)
 
     def add_passenger_to(self, destination_id: str) -> None:
@@ -63,6 +67,11 @@ class Station:
 
         if len(self) > self.OVERLOAD_THRESHOLD:
             raise StationOverloadError(self.name, len(self))
+
+    def set_waiting(self, passengers: list[Passenger]) -> None:
+        """대기열을 통째로 교체. 외부에서 직접 속성을 갈아 끼우는 대신 사용."""
+        self.waiting_passengers = passengers
+        self.max_waiting = max(self.max_waiting, len(self))
 
     def record_boarding(self, boarded_count: int) -> None:
         self.total_boarded += boarded_count

@@ -58,11 +58,18 @@ class MetroTrain(BaseTrain):
         current_station_id = self.route_ids[self.current_idx]
 
         if current_station_id in skip_station_ids:
+            # 무정차 역을 통과할 때, 그 역을 목적지로 한 탑승객은 강제 하차시킨다.
+            # (현실 비유: "이 역은 무정차로 바뀌었으니 다음 정차역에서 알아서 내리세요")
+            self.passengers = [
+                passenger
+                for passenger in self.passengers
+                if passenger.destination_id != current_station_id
+            ]
             self.set_next_target()
             return
 
         self.is_stopped = True
-        self.handle_boarding(stations_dict[current_station_id])
+        self.handle_boarding(stations_dict[current_station_id], skip_station_ids)
 
     def set_next_target(self):
         next_idx = self.current_idx + self.direction
@@ -70,7 +77,8 @@ class MetroTrain(BaseTrain):
             self.direction *= -1
         self.target_idx = self.current_idx + self.direction
 
-    def handle_boarding(self, station: Station):
+    def handle_boarding(self, station: Station, skip_station_ids: set[str] | None = None):
+        skip = skip_station_ids or set()
         initial_count = len(self.passengers)
         self.passengers = [
             passenger
@@ -80,18 +88,21 @@ class MetroTrain(BaseTrain):
         station.record_alighting(initial_count - len(self.passengers))
 
         space = self.CAPACITY - len(self.passengers)
+        # 무정차 역을 목적지로 한 승객은 승차시키지 않는다 (열차에 갇히는 것을 방지).
         can_board = [
             passenger
             for passenger in station.waiting_passengers
             if passenger.destination_id in self.route_ids
+            and passenger.destination_id not in skip
         ]
         cannot_board = [
             passenger
             for passenger in station.waiting_passengers
             if passenger.destination_id not in self.route_ids
+            or passenger.destination_id in skip
         ]
 
         boarding = can_board[:space]
-        station.waiting_passengers = can_board[space:] + cannot_board
+        station.set_waiting(can_board[space:] + cannot_board)
         self.passengers.extend(boarding)
         station.record_boarding(len(boarding))

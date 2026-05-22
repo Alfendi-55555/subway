@@ -88,7 +88,6 @@ class SubwayRenderer:
 
     def _draw_alerts(self, system) -> None:
         now = pygame.time.get_ticks()
-        system.alerts = [alert for alert in system.alerts if now - alert["time"] < 5000]
         for index, alert in enumerate(system.alerts[:6]):
             age = now - alert["time"]
             alpha = max(80, 255 - int(255 * age / 5000))

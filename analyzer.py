@@ -1,4 +1,4 @@
-from __future__ import annotations #타입 힌트 사용 우연화 관련. 코드와는 관계 X
+from __future__ import annotations #타입 힌트 사용 유연화 관련
 import random
 
 from .simulation import Simulation
@@ -18,7 +18,7 @@ class BottleneckAnalyzer:
             if len(station) >= self.BOTTLENECK_THRESHOLD and not station.is_skipped
         ]
 
-    #시나리오 분석 함수(+05/19 로직 개선 -> 혼잡도에 따른 열차 정차시간 추가)
+    #시나리오 분석 함수(+ 로직 개선 -> 혼잡도가 높을수록 올라가는 것 추가)
     def run_scenario(
         self,
         simulation: Simulation,
@@ -31,26 +31,32 @@ class BottleneckAnalyzer:
             ("무정차 분산", lambda snapshot: snapshot.apply_skip(target_station_id)),
             ("열차 추가", lambda snapshot: snapshot.apply_extra_train(target_station_id)),
         ]
-        
-        for label, setup_fn in scenarios:
-            snapshot = simulation.clone()
-            setup_fn(snapshot)
-            random.seed(42)
-            snapshot.fast_forward(duration_ms)
 
-            # 1. 처리량 (승차 인원)
-            total_boarded = sum(station.total_boarded for station in snapshot.stations.values())
-            # 2. 시스템 건강도: 위험 수치를 초과한 역의 개수 (페널티)
-            overloaded_stations = sum(1 for station in snapshot.stations.values() if len(station) > Station.OVERLOAD_THRESHOLD)
-            # 3. 노선 흐름: 열차들이 이동한 총 누적 거리 (높을수록 시간 지연 없이 잘 달렸다는 뜻)
-            train_progress = sum(train.progress for train in snapshot.trains)
-            
-            results[label] = {
-                "total_boarded": total_boarded,
-                "overloaded_stations": overloaded_stations,
-                "train_progress": train_progress,
-            }
-        
+        # 분석은 라이브 시뮬레이션의 글로벌 random 상태를 오염시키지 않는다.
+        saved_state = random.getstate()
+        try:
+            for label, setup_fn in scenarios:
+                snapshot = simulation.clone()
+                # setup_fn(무정차 분산)도 random.choice를 쓰므로 시드를 먼저 고정한다.
+                random.seed(42)
+                setup_fn(snapshot)
+                snapshot.fast_forward(duration_ms)
+
+                # 1. 처리량 (승차 인원)
+                total_boarded = sum(station.total_boarded for station in snapshot.stations.values())
+                # 2. 시스템 건강도: 위험 수치를 초과한 역의 개수 (페널티)
+                overloaded_stations = sum(1 for station in snapshot.stations.values() if len(station) > Station.OVERLOAD_THRESHOLD)
+                # 3. 노선 흐름: 열차들이 이동한 총 누적 거리 (높을수록 시간 지연 없이 잘 달렸다는 뜻)
+                train_progress = sum(train.progress for train in snapshot.trains)
+
+                results[label] = {
+                    "total_boarded": total_boarded,
+                    "overloaded_stations": overloaded_stations,
+                    "train_progress": train_progress,
+                }
+        finally:
+            random.setstate(saved_state)
+
         max_boarded = max(item["total_boarded"] for item in results.values()) or 1
         max_progress = max(item["train_progress"] for item in results.values()) or 1
         

@@ -145,6 +145,10 @@ class SubwaySystem:
         if len(self.alerts) > 6:
             self.alerts.pop()
 
+    def _prune_alerts(self) -> None:
+        now = pygame.time.get_ticks()
+        self.alerts = [alert for alert in self.alerts if now - alert["time"] < 5000]
+
     def run(self) -> None:
         while True:
             dt = self.clock.get_time()
@@ -170,6 +174,7 @@ class SubwaySystem:
             self._check_bottleneck()
 
             self.sim.update(dt)
+            self._prune_alerts()
 
             self.renderer.draw(self)
 

@@ -39,14 +39,13 @@ subway_sim_more/
   passenger.py         승객 객체
   spawner.py           승객 생성기
   analyzer.py          병목 감지 및 시나리오 비교
-  snapshot.py          기존 SimSnapshot import 호환용 wrapper
   data.py              역/노선/색상 데이터
   exceptions.py        사용자 정의 예외
 ```
 
 ## 최근 리팩토링 요약
 
-`system.py`와 `snapshot.py`에 중복되어 있던 시뮬레이션 로직을 `simulation.py`로 분리했습니다.
+기존에 `system.py`와 `snapshot.py`에 중복되어 있던 시뮬레이션 로직을 `simulation.py`로 통합했습니다. 호환용으로 남겨두었던 `snapshot.py`는 외부 참조가 없는 것이 확인되어 제거했습니다.
 
 현재 `Simulation`이 담당하는 것:
 
@@ -78,8 +77,6 @@ subway_sim_more/
 - 열차 그리기
 - Stats/Alerts/Scenario/Controls 패널 그리기
 - 현재 시뮬레이션 시간과 러시아워 상태 표시
-
-`snapshot.py`는 중복 구현을 제거하고 기존 이름 호환을 위해 `SimSnapshot`만 남겨둔 상태입니다.
 
 ## 중요한 주의사항
 
